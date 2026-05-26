@@ -11,6 +11,10 @@
 
 #include <stdint.h>
 
+// chip specific
+#define led_pin GPIO_PIN_4
+#define led_port GPIOE
+
 uint8_t gpio_init(void);
 
 

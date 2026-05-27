@@ -51,30 +51,50 @@ uint8_t buffer;
 
 // test
 char *user_data = "The application is running\r\n";
+uint8_t received_data;
+uint8_t data_buffer[100];
+uint8_t count;
 
 
+int main(void) {
+  /* CHIP LOGIC */
 
-int main(void)
-{
-    // peripheral init
-    HAL_Init();
-    clock_config();
-    gpio_init();
-    uart_init();
-    // IT Init
-    // HAL_UART_Receive_IT(&uart1, &buffer, 1);
+  // peripheral init
+  HAL_Init();
+  clock_config();
+  gpio_init();
+  uart_init();
+  // IT Init
+  // HAL_UART_Receive_IT(&uart1, &buffer, 1);
 
-    uint32_t data_len = strlen(user_data);
-    if (HAL_UART_Transmit(&uart1, (uint8_t*) user_data, (uint16_t) data_len, HAL_MAX_DELAY) != 0)
-        return 1;
+  // uint32_t data_len = strlen(user_data);
+  // if (HAL_UART_Transmit(&uart1, (uint8_t*) user_data, (uint16_t) data_len, HAL_MAX_DELAY) != 0)
+  //     return 1;
 
-    // FSM logic
-    light_init();
+  while (1) {
+  HAL_UART_Receive(&uart1, &received_data, 1, HAL_MAX_DELAY);
+  if (received_data == '\r') {
+    data_buffer[count++] = '\r';
+    HAL_UART_Transmit(&uart1, data_buffer, count, HAL_MAX_DELAY);
+    memset(data_buffer, 0, count);  
+  } else {
+    data_buffer[count++] = received_data;
+  }
+  
+  }
+  
+
+  /* CHIP LOGIC */
+
+
     
-    while (1) {
-    }
+  // FSM logic
+  light_init();
+  
+  while (1) {
+  }
 
-    return 0;
+  return 0;
 }
 
 // FSM logic

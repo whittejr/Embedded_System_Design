@@ -18,13 +18,13 @@ uint8_t uart_init(void) {
     uart1.Init.Parity = UART_PARITY_NONE;
     uart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
     uart1.Init.Mode = UART_MODE_TX_RX;
-    // uart1.Init.OverSampling = UART_OVERSAMPLING_16;
-    // uart1.Init.OneBitSampling = UART_ONEBIT_SAMPLING_DISABLED;
-    // uart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
 
-    if (HAL_UART_Init(&uart1) != 0)
-        return 1;
+    // Enabling USART1 IRQ and set up the priority (NVIC)
+    HAL_NVIC_EnableIRQ(USART1_IRQn);
+    HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);
 
+    if (HAL_UART_Init(&uart1) != 0) return 1;
+    
     return 0;
 }
 
@@ -34,3 +34,16 @@ uint8_t uart_init(void) {
 //     }
 //     return 0;
 // }
+
+
+void HAL_UARTEx_WakeupCallback(UART_HandleTypeDef *huart) {
+
+}
+
+void HAL_UARTEx_TxFifoEmptyCallback(UART_HandleTypeDef *huart) {
+
+}
+
+void HAL_UARTEx_RxFifoFullCallback(UART_HandleTypeDef *huart) {
+
+}

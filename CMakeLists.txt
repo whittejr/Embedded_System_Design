@@ -23,12 +23,14 @@ endif()
 
 file(GLOB_RECURSE APP_SOURCES CONFIGURE_DEPENDS
     "core/src/*.c"
+    "core/fsm/*.c"
     "lib/BSP/src/*.c"
     "lib/components/*.c"
 
 )
 file(GLOB_RECURSE HEADER_FILES CONFIGURE_DEPENDS 
     "core/inc/*.h" 
+    "core/fsm/*.h"
     "lib/BSP/inc/*.h" 
     "lib/components/*.h"
 )

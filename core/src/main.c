@@ -1,227 +1,85 @@
 /**
 * @file    main.c
-* @brief   none
+* @brief   Mealey Machine
 * @version 0.1.0
-* @a* @author  Your name here
+* @a* @author  Alessandro Davi
 * @date    2026-03-31
 */
 
-#include "main.h"
+#include <stdint.h>
 #include "stm32wbxx_hal.h"
-#include "gpio.h"
 #include "clock.h"
-#include "stm32wbxx_hal_def.h"
-#include "stm32wbxx_hal_uart.h"
+#include "tim.h"
+#include "gpio.h"
 #include "uart.h"
-#include <string.h>
+#include "fsm.h"
+#include "mealey_fsm.h"
+#include "moore_fsm.h"
 
+
+//  Peripherals
 extern UART_HandleTypeDef uart1;
+extern TIM_HandleTypeDef tim16;
+void hw_init(void);
 
-// FSM logic
-enum event {
-    ON,
-    OFF
-};
-
-typedef enum {
-    LIGHT_OFF,
-    LIGHT_DIM,
-    LIGHT_MEDIUM,
-    LIGHT_FULL
-} light_state_t;
-
-light_state_t curr_state;
-
-#define LIGHT_BRIGHT_DIM 25
-#define LIGHT_BRIGHT_MED 85
-#define LIGHT_BRIGHT_FULL 255
-#define LIGHT_BRIGHT_OFF 0
-
-void light_state_machine(uint8_t event);
-void light_change_intensity(uint8_t pin, GPIO_TypeDef *port, uint8_t intensity);
-void run_entry_action(light_state_t state);
-void light_init(void);
-
-// error handler
+// Error handler
 void Error_Handler(void);
 
-// global variables
+// Application variables    
 uint8_t event;
-uint8_t buffer;
-
-// test
-char *user_data = "The application is running\r\n";
-uint8_t received_data;
-uint8_t data_buffer[100];
-uint8_t count;
-
+uint8_t rcv_data;
+uint8_t rx_buffer[50];
+uint8_t count = 0;
+uint8_t message[100] = "Light Control Application\r\n-------------------------\r\nSend 'x' or 'o'\r\n";
+light_state_t curr_state;
 
 int main(void) {
-  /* CHIP LOGIC */
+    // Peripheral init
+    hw_init();
 
-  // peripheral init
-  HAL_Init();
-  clock_config();
-  gpio_init();
-  uart_init();
-  // IT Init
-  // HAL_UART_Receive_IT(&uart1, &buffer, 1);
+    // application code
 
-  // uint32_t data_len = strlen(user_data);
-  // if (HAL_UART_Transmit(&uart1, (uint8_t*) user_data, (uint16_t) data_len, HAL_MAX_DELAY) != 0)
-  //     return 1;
-
-  while (1) {
-  HAL_UART_Receive(&uart1, &received_data, 1, HAL_MAX_DELAY);
-  if (received_data == '\r') {
-    data_buffer[count++] = '\r';
-    HAL_UART_Transmit(&uart1, data_buffer, count, HAL_MAX_DELAY);
-    memset(data_buffer, 0, count);  
-  } else {
-    data_buffer[count++] = received_data;
-  }
-  
-  }
-  
-
-  /* CHIP LOGIC */
-
-
-    
-  // FSM logic
-  light_init();
-  
-  while (1) {
-  }
-
-  return 0;
+    return 0;
 }
 
-// FSM logic
-void light_init(void) {
+void fsm_init(void) {
     curr_state = LIGHT_OFF;
-    run_entry_action(LIGHT_OFF);
-}
-
-void run_entry_action(light_state_t state) {
-    switch(state) {
-
-        case LIGHT_OFF: {
-            light_change_intensity(led_pin, led_port, LIGHT_BRIGHT_OFF);
-            break;
-        }
-        case LIGHT_DIM: {
-            light_change_intensity(led_pin, led_port, LIGHT_BRIGHT_DIM);
-            break;
-        }
-        case LIGHT_MEDIUM: {
-            light_change_intensity(led_pin, led_port, LIGHT_BRIGHT_MED);
-            break;
-        }
-        case LIGHT_FULL: {
-            light_change_intensity(led_pin, led_port, LIGHT_BRIGHT_FULL);
-            break;
-        }
-    }
-}
-
-void light_state_machine(uint8_t event) {
-  
-  switch(curr_state)
-  {
-    case LIGHT_OFF:{
-      switch(event){
-        case ON:{
-          light_change_intensity(led_pin, led_port,LIGHT_BRIGHT_DIM);
-          curr_state = LIGHT_DIM;
-          break;
-        }
-      }
-      break;
-    }
-    case LIGHT_DIM:{
-      switch(event){
-        case ON:{
-          light_change_intensity(led_pin, led_port,LIGHT_BRIGHT_MED);
-          curr_state = LIGHT_MEDIUM;
-          break;
-        }
-        case OFF:{
-          light_change_intensity(led_pin, led_port,LIGHT_BRIGHT_OFF);
-          curr_state = LIGHT_OFF;
-          break;
-        }
-      }
-      break;
-    }
-    case LIGHT_MEDIUM:{
-      switch(event){
-        case ON:{
-          light_change_intensity(led_pin, led_port,LIGHT_BRIGHT_FULL);
-          curr_state = LIGHT_FULL;
-          break;
-        }
-        case OFF:{
-          light_change_intensity(led_pin, led_port,LIGHT_BRIGHT_OFF);
-          curr_state = LIGHT_OFF;         
-          break;
-        }
-      }
-      break;
-    }
-    case LIGHT_FULL:{
-      switch(event){
-        case ON:{
-          light_change_intensity(led_pin, led_port,LIGHT_BRIGHT_DIM);
-          curr_state = LIGHT_DIM;         
-          break;
-        }
-        case OFF:{
-          light_change_intensity(led_pin, led_port,LIGHT_BRIGHT_OFF);
-          curr_state = LIGHT_OFF;          
-          break;
-        }
-      }
-      break;
-    }
-  }
+    moore_run_entry_action(LIGHT_OFF);
 }
 
 
-// error handler
+// Error handler
 void Error_Handler(void) {
     __disable_irq();
     while(1);
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-    event = buffer;
+    if (rcv_data == '\r') {
+        if (count < 0) return;
 
-    if (event == 'o') {
-        light_state_machine(ON);
+        event = rx_buffer[count-1];
+        if (event == 'o')
+            mealey_light_state_machine(&curr_state, ON); 
+        else if (event == 'x')
+            mealey_light_state_machine(&curr_state, OFF);
+        count = 0;        
+    } else {
+        rx_buffer[count++] = rcv_data;
     }
-    else if (event == 'x') {
-        light_state_machine(OFF);
-    }
-
-	HAL_UART_Receive_IT(&uart1, &buffer, 1);
+    
+   HAL_UART_Receive_IT(&uart1, &rcv_data, 1);
 }
 
-void light_change_intensity(uint8_t pin, GPIO_TypeDef *port, uint8_t intensity) {
-
+void hw_init(void) {
+    HAL_Init();
+    clock_config();
+    tim16_init();
+    gpio_init();
+    uart_init();
+    if (HAL_TIM_PWM_Start(&tim16, TIM_CHANNEL_1) != 0) Error_Handler();
+    HAL_UART_Receive_IT(&uart1, &rcv_data, 1);
+    HAL_UART_Transmit(&uart1, message, 100, HAL_MAX_DELAY);
 }
 
-void HAL_UARTEx_WakeupCallback(UART_HandleTypeDef *huart)
-{
 
-}
-
-void HAL_UARTEx_TxFifoEmptyCallback(UART_HandleTypeDef *huart)
-{
-
-}
-
-void HAL_UARTEx_RxFifoFullCallback(UART_HandleTypeDef *huart)
-{
-
-}

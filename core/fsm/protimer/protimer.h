@@ -54,9 +54,15 @@ typedef struct {
     uint8_t ss;
 } protimer_tick_event_t;
 
+typedef enum {
+    EVENT_HANDLED,
+    EVENT_IGNORED,
+    EVENT_TRANSITION
+} event_status_t;
 
 
 /* Functions */
 void protimer_init(protimer_t *mobj);
+void protimer_event_dispatcher(protimer_t *const mobj, event_t *const e);
 
 #endif // PROTIMER_H

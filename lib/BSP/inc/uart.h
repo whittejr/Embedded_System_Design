@@ -40,7 +40,7 @@ uint8_t uart_deinit(void);
 *            - 
 * @note       
 */
-void uart_write(uint8_t *buf, uint16_t len);
+uint8_t uart_write(uint8_t *data, uint16_t len);
 
 /*
 * @brief       

@@ -6,7 +6,10 @@
 
 #include "uart.h"
 #include "stm32wbxx_hal.h"
+#include "stm32wbxx_hal_def.h"
 #include "stm32wbxx_hal_uart.h"
+#include <stdio.h>
+#include <string.h>
 
 UART_HandleTypeDef uart1;
 
@@ -28,13 +31,13 @@ uint8_t uart_init(void) {
     return 0;
 }
 
-// uint8_t uart_receive(uint8_t *data, uint16_t size) {
-//     if (HAL_UART_Receive(&uart1, data, size, HAL_MAX_DELAY) != 0) {
-//         return 1;
-//     }
-//     return 0;
-// }
+uint8_t uart_write(uint8_t *data, uint16_t len) {
 
+    if ((HAL_UART_Transmit(&uart1, data, len, HAL_MAX_DELAY)) != 0)
+        return 1;
+
+    return 0;
+}
 
 void HAL_UARTEx_WakeupCallback(UART_HandleTypeDef *huart) {
 

@@ -16,4 +16,10 @@
 #define uart_pin    GPIO_PIN_6|GPIO_PIN_7
 #define uart_port   GPIOB
 
+#define I2C_INSTANCE      I2C1
+#define I2C_SDA_PORT      GPIOA
+#define I2C_SDA_PIN       GPIO_PIN_10
+#define I2C_SCL_PORT      GPIOA
+#define I2C_SCL_PIN       GPIO_PIN_9
+
 #endif // BOARD_CONFIG_H

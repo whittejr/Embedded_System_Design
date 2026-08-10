@@ -22,6 +22,7 @@
                 "mcu-debug.rtos-views"
             ],
             "settings": {
+                "clangd.path": "clangd",
                 "clangd.arguments": [
                     "--query-driver=/usr/bin/arm-none-eabi-*"
                 ]

@@ -7,11 +7,10 @@
 */
 
 #include <stdint.h>
-#include "qp.h"
+// #include "qp.h"
 #include "stm32wbxx_hal.h"
 #include "bsp.h"
-#include "qpc.h"
-#include "QHSM_Test.h"
+// #include "qpc.h"
 
 //  Peripherals
 extern UART_HandleTypeDef uart1;
@@ -24,7 +23,7 @@ void Error_Handler(void);
 
 int main(void) {
     // Peripheral init
-    hw_init();  
+    hw_init();
     
     while(1)
     {
@@ -38,32 +37,3 @@ void Error_Handler(void) {
     __disable_irq();
     while(1);
 }
-
-
-// void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-    
-//     if (data == 'w')
-//         ue.super.sig = INC_TIME;
-//     else if (data == 's')
-//         ue.super.sig = DEC_TIME;
-//     else if (data == 'c')
-//         ue.super.sig = ABRT;
-//     else if (data == 'p')
-//         ue.super.sig = START_PAUSE;
-//     else {
-//         HAL_UART_Receive_IT(&uart1, (uint8_t*) &data, 1);
-//         return;
-//     }
-       
-//     HAL_UART_Receive_IT(&uart1, (uint8_t*) &data, 1);
-//     dispatcher_flag = 1; 
-// }
-
-/*
-    letra = interrupçao
-    switch case Letra
-        p - START_PAUSE
-        w - INC
-        s - DEC
-        c - ABRT
-*/

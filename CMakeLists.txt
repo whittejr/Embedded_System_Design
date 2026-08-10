@@ -7,6 +7,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(EXECUTABLE "firmware")
 
+set(QPC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/third_party/qpc")
+
 if(NOT DEFINED MCU_FAMILY)
     message(FATAL_ERROR "MCU_FAMILY não definida!")
 endif()
@@ -29,10 +31,7 @@ file(GLOB_RECURSE APP_SOURCES CONFIGURE_DEPENDS
     "lib/components/*.c"
 
     # qm
-    "core/fsm/qm/*.c"
-    "lib/third_party/qpc/src/qf/*.c"
-    "lib/third_party/qpc/src/qv/*.c"
-    "lib/third_party/qpc/ports/arm-cm/qv/gnu/*.c"
+
 
 )
 file(GLOB_RECURSE HEADER_FILES CONFIGURE_DEPENDS 
@@ -42,11 +41,11 @@ file(GLOB_RECURSE HEADER_FILES CONFIGURE_DEPENDS
     "lib/BSP/inc/*.h" 
     "lib/components/*.h"
 
-    # qm
-    "core/fsm/qm/*.h"
-    "lib/third_party/qpc/include/*.h"
-    "lib/third_party/qpc/ports/arm-cm/qv/gnu/*.h"
-    "lib/third_party/qpc/ports/arm-cm/config/*.h"
+    # qpc
+    "${QPC_DIR}/include/*.h"
+    "${QPC_DIR}/ports/arm-cm/config/*.h"
+    "${QPC_DIR}/ports/arm-cm/qv/gnu/*.h"
+
 )
 
 set(APP_INCLUDES "")

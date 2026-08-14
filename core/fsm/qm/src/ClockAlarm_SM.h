@@ -47,20 +47,59 @@ enum Clock_Alarm_Signals {
     MAX_SIG
 };
 
-#define MAX_TIME (864000UL) // 24 * 3600 * 10
+enum time_mode {
+    MODE_24H,
+    MODE_12H
+};
 
-//$skip${QP_VERSION} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-// Check for the minimum required QP version
-#if (QP_VERSION < 800U) || (QP_VERSION != ((QP_RELEASE^4294967295U)%0x2710U))
-#error qpc version 8.0.0 or higher required
-#endif
-//$endskip${QP_VERSION} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//$define${HSMs::Clock_Alarm_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+enum alarm_status {
+    ALARM_OFF,
+    ALARM_ON
+};
+
+typedef enum time_format {
+    FORMAT_24H,
+    FORMAT_AM,
+    FORMAT_PM
+} time_format_t;
+
+#define GET_HOUR(seconds)     (seconds / 3600UL)
+#define GET_MIN(seconds)      ( (seconds / 60UL) % 60UL)
+#define GET_SEC(seconds)      (seconds % 60UL)
+#define DIGIT1(d)             (d / 10U)
+#define DIGIT2(d)             (d % 10U)
+
+#define MAX_TIME (864000UL) // 24 * 3600 * 10
+#define INITIAL_CURR_TIME  (((4UL * 3600UL) + (0UL * 60UL) + 0UL) * 10UL)
+#define INITIAL_ALARM_TIME (8UL * 3600UL)
+
+#define TICKING_CURR_TIME_ROW 0
+#define TICKING_CURR_TIME_COL 3
+#define CLOCK_CURR_TIME_ROW 0
+#define CLOCK_CURR_TIME_COL 2
+#define CLOCK_SETTING_TIME_ROW 0
+#define CLOCK_SETTING_TIME_COL 2
+//
+#define CLOCK_SETTING_TIME_HOUR_D1_COL 2
+#define CLOCK_SETTING_TIME_HOUR_D2_COL 3
+#define CLOCK_SETTING_TIME_MIN_D1_COL  5
+#define CLOCK_SETTING_TIME_MIN_D2_COL  6
+#define CLOCK_SETTING_TIME_SEC_D1_COL  8
+#define CLOCK_SETTING_TIME_SEC_D2_COL  9
+
+#define CS_ROW 0
+#define CS_HOUR_D1_COL 2
+
+
+//$declare${HSMs::Clock_Alarm_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 //${HSMs::Clock_Alarm_ctor} ..................................................
-void Clock_Alarm_ctor(void) {
-    QHsm_ctor(&Clock_Alarm_obj.super, Q_STATE_CAST(&Clock_Alarm_initial));
-}
-//$enddef${HSMs::Clock_Alarm_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+void Clock_Alarm_ctor(void);
+//$enddecl${HSMs::Clock_Alarm_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//$declare${HSMs::super_ClockAlarm} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+//${HSMs::super_ClockAlarm} ..................................................
+extern QHsm *const super_ClockAlarm;
+//$enddecl${HSMs::super_ClockAlarm} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 #endif

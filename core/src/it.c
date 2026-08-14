@@ -16,7 +16,6 @@ extern TIM_HandleTypeDef tim16;
 
 void SysTick_Handler(void) {
     HAL_IncTick();
-    HAL_SYSTICK_IRQHandler();
 }
 
 void USART1_IRQHandler(void) {

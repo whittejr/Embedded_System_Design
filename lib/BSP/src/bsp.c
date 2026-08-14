@@ -10,6 +10,7 @@
 #include "clock.h"
 #include "gpio.h"
 #include "stm32wbxx_hal.h"
+#include "stm32wbxx_hal_gpio.h"
 #include "uart.h"
 
 uint8_t hw_init(void) {
@@ -20,6 +21,8 @@ uint8_t hw_init(void) {
     uart_init();
 
     bsp_display_init(SSD1306_INTERFACE_IIC, SSD1306_ADDR_SA0_0);
+    // bsp_display_write_string(0, 0,"teste");
+    bsp_display_clear();
 }
 
 void BSP_display(char *c) {
@@ -39,4 +42,8 @@ void bsp_display_clear(void) {
 
 void bsp_display_write_string(uint8_t x, uint8_t y, char *texto) {
     ssd1306_basic_string(x, y, texto, (uint16_t)strlen(texto), 1, SSD1306_FONT_16);
+}
+
+void bsp_write_rect(void) {
+    ssd1306_basic_rect(0, 18, 5, 21, 1);
 }

@@ -424,13 +424,29 @@ uint8_t ssd1306_gram_update(ssd1306_handle_t *handle)
             
             return 1;                                                                                 /* return error */
         }
-        for (n = 0; n < 128; n++)                                                                     /* write 128 */
+        if (handle->iic_spi == SSD1306_INTERFACE_IIC)
         {
-            if (a_ssd1306_write_byte(handle, handle->gram[n][i], SSD1306_DATA) != 0)                  /* write data */
+            uint8_t buffer_pagina[128];
+            for (n = 0; n < 128; n++)
             {
-                handle->debug_print("ssd1306: write byte failed.\n");                                 /* write byte failed */
-                
-                return 1;                                                                             /* return error */
+                buffer_pagina[n] = handle->gram[n][i];
+            }
+            if (handle->iic_write(handle->iic_addr, 0x40, buffer_pagina, 128) != 0)
+            {
+                handle->debug_print("ssd1306: write block failed.\n");
+                return 1;
+            }
+        }
+        else
+        {
+            for (n = 0; n < 128; n++)                                                                     /* write 128 */
+            {
+                if (a_ssd1306_write_byte(handle, handle->gram[n][i], SSD1306_DATA) != 0)                  /* write data */
+                {
+                    handle->debug_print("ssd1306: write byte failed.\n");                                 /* write byte failed */
+                    
+                    return 1;                                                                             /* return error */
+                }
             }
         }
     }

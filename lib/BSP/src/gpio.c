@@ -11,6 +11,9 @@
 #include "stm32wbxx_hal_gpio.h"
 #include "stm32wbxx_hal_gpio_ex.h"
 
+/* static functions */
+static void btn_init(void);
+
 uint8_t gpio_init(void) {
     
     // Led
@@ -31,7 +34,29 @@ uint8_t gpio_init(void) {
     gpio_uart.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(uart_port, &gpio_uart);
 
+
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    /*Configure GPIO pin : PE4 */
+    GPIO_InitStruct.Pin = GPIO_PIN_4;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+    HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+    btn_init();
+
     return 0;
+}
+
+static void btn_init(void) {
+    GPIO_InitTypeDef btn_pins;
+    btn_pins.Mode = GPIO_MODE_INPUT;
+    btn_pins.Pull = GPIO_PULLUP;
+    btn_pins.Pin = BTN_SET_PIN;
+    HAL_GPIO_Init(BTN_SET_PORT, &btn_pins);
+
+    // btn_pins.Pin = BTN_OK_PIN;
+    HAL_GPIO_Init(BTN_OK_PORT, &btn_pins);
 }
 
 

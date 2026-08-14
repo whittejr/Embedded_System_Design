@@ -22,4 +22,10 @@
 #define I2C_SCL_PORT      GPIOA
 #define I2C_SCL_PIN       GPIO_PIN_9
 
+
+#define BTN_SET_PIN   GPIO_PIN_5 
+#define BTN_SET_PORT  GPIOA
+#define BTN_OK_PIN    GPIO_PIN_6
+#define BTN_OK_PORT   GPIOA
+
 #endif // BOARD_CONFIG_H

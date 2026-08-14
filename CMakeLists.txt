@@ -30,9 +30,13 @@ file(GLOB_RECURSE APP_SOURCES CONFIGURE_DEPENDS
     "lib/BSP/src/*.c"
     "lib/components/*.c"
 
-    # qm
+    # HSM
+    "core/fsm/qm/src/*.c"
 
-
+    # qpc
+    "${QPC_DIR}/src/qf/*.c"
+    "${QPC_DIR}/src/qv/*.c"
+    "${QPC_DIR}/ports/arm-cm/qv/gnu/*.c"
 )
 file(GLOB_RECURSE HEADER_FILES CONFIGURE_DEPENDS 
     "core/inc/*.h" 
@@ -40,6 +44,9 @@ file(GLOB_RECURSE HEADER_FILES CONFIGURE_DEPENDS
     "lib/fsm/protimer/*.h"
     "lib/BSP/inc/*.h" 
     "lib/components/*.h"
+
+    # HSM
+    "core/fsm/qm/src/*.h"
 
     # qpc
     "${QPC_DIR}/include/*.h"

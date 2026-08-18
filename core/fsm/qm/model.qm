@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<model version="7.0.3" links="0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.state-machine.com/qm/qm7.xsd">
+<model version="6.2.3" links="0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.state-machine.com/qm/qm.xsd">
  <framework name="qpc"/>
  <package name="HSMs" stereotype="0x02">
   <class name="Clock_Alarm" superclass="qpc::QHsm">
@@ -12,6 +12,8 @@
    <attribute name="obj" type="Clock_Alarm" visibility="0x02" properties="0x01"/>
    <attribute name="temp_format" type="uint8_t" visibility="0x02" properties="0x00"/>
    <attribute name="temp_digit" type="uint8_t" visibility="0x02" properties="0x00"/>
+   <attribute name="alarm_timeout" type="uint16_t" visibility="0x00" properties="0x00"/>
+   <attribute name="timeout" type="uint8_t" visibility="0x00" properties="0x00"/>
    <operation name="get_curr_time" type="uint32_t" visibility="0x00" properties="0x01">
     <documentation>Returns the value of curr_time </documentation>
     <code>return Clock_Alarm_curr_time;</code>
@@ -67,39 +69,55 @@ uint8_t h = GET_HOUR(me-&gt;temp_time);
 uint8_t m = GET_MIN(me-&gt;temp_time);
 uint8_t s = GET_SEC(me-&gt;temp_time);
 
+const char* am_pm;
+
 if(me-&gt;temp_format != FORMAT_24H) {
-    const char* am_pm = (me-&gt;temp_format == FORMAT_AM) ? &quot;AM&quot; : &quot;PM&quot;;
+    am_pm = (me-&gt;temp_format == FORMAT_AM) ? &quot;AM&quot; : &quot;PM&quot;;
 
     snprintf(time_as_string, sizeof(time_as_string), &quot;%02u:%02u:%02u %s&quot;, h, m, s, am_pm);
 
 } else {
-    snprintf(time_as_string, sizeof(time_as_string), &quot;%02u:%02u:%02u&quot;, h, m, s);
+    am_pm = &quot; 24H&quot;;
+    snprintf(time_as_string, sizeof(time_as_string), &quot;%02u:%02u:%02u%s&quot;, h, m, s, am_pm);
 }
 
 bsp_display_write_string(row, col, time_as_string);</code>
    </operation>
    <statechart properties="0x00">
+    <documentation>if(me-&gt;temp_digit) {
+    bsp_display_write_string(0, 15, &quot;ALARM OFF&quot;);
+    me-&gt;temp_digit = 0;
+} else {
+    bsp_display_write_string(0, 15, &quot;ALARM ON&quot;);
+    me-&gt;temp_digit = 1;
+}</documentation>
     <initial target="../1/2">
      <action>Clock_Alarm_set_curr_time(INITIAL_CURR_TIME);
 me-&gt;alarm_time = INITIAL_ALARM_TIME;
 me-&gt;time_mode = MODE_12H;
 me-&gt;alarm_status = ALARM_OFF;</action>
-     <initial_glyph conn="9,13,5,3,17,34,6">
+     <initial_glyph conn="9,13,5,3,17,33,6">
       <action box="0,-2,10,2"/>
      </initial_glyph>
     </initial>
     <state name="Clock">
      <history type="deep" target="../2">
-      <history_glyph conn="21,77,3,2,20,-11"/>
+      <history_glyph conn="21,76,3,2,20,-11"/>
      </history>
-     <tran trig="ALARM" target="../../2">
-      <tran_glyph conn="39,107,2,0,4">
+     <tran trig="ALARM">
+      <choice target="../../../2">
+       <guard>(me-&gt;alarm_status == ALARM_ON &amp;&amp; ((Clock_Alarm_get_curr_time() / 10) == me-&gt;alarm_time))</guard>
+       <choice_glyph conn="50,111,4,0,7">
+        <action box="1,0,10,2"/>
+       </choice_glyph>
+      </choice>
+      <tran_glyph conn="50,106,2,-1,5">
        <action box="0,-2,10,2"/>
       </tran_glyph>
      </tran>
      <state name="Ticking">
       <entry brief="display_curr_time">Clock_Alarm_display_curr_time(me, TICKING_CURR_TIME_ROW, TICKING_CURR_TIME_COL);</entry>
-      <tran trig="SET" target="../../3/2">
+      <tran trig="SET" target="../../4">
        <action>me-&gt;temp_time = Clock_Alarm_get_curr_time() / 10;
 if (me-&gt;time_mode == MODE_12H) {
     if(strcmp(get_am_or_pm(me-&gt;temp_time), &quot;AM&quot;) == 0)
@@ -112,210 +130,534 @@ if (me-&gt;time_mode == MODE_12H) {
     
     me-&gt;temp_format = FORMAT_24H;
 }</action>
-       <tran_glyph conn="77,38,1,3,10,-8,5">
+       <tran_glyph conn="77,37,1,3,10,-17,5">
         <action box="0,-2,10,2"/>
        </tran_glyph>
       </tran>
       <tran trig="OK" target="../../3/3">
-       <tran_glyph conn="77,58,1,3,8,16,22">
+       <action>me-&gt;temp_time = me-&gt;alarm_time;
+if (me-&gt;time_mode == MODE_12H) {
+    if(strcmp(get_am_or_pm(me-&gt;temp_time), &quot;AM&quot;) == 0)
+        me-&gt;temp_format = FORMAT_AM;
+    else
+        me-&gt;temp_format = FORMAT_PM;
+   
+    me-&gt;temp_time = convert_24hformat_to_12h(me-&gt;temp_time);
+} else {
+    
+    me-&gt;temp_format = FORMAT_24H;
+}</action>
+       <tran_glyph conn="77,57,1,3,8,15,7">
         <action box="0,-2,10,2"/>
        </tran_glyph>
       </tran>
       <tran trig="TICK">
-       <action>Clock_Alarm_update_curr_time();
-Clock_Alarm_display_curr_time(me, TICKING_CURR_TIME_ROW, TICKING_CURR_TIME_COL);</action>
-       <tran_glyph conn="32,52,3,-1,11">
+       <action>Clock_Alarm_display_curr_time(me, TICKING_CURR_TIME_ROW, TICKING_CURR_TIME_COL);</action>
+       <tran_glyph conn="32,51,3,-1,11">
         <action box="0,-2,10,2"/>
        </tran_glyph>
       </tran>
-      <state_glyph node="32,35,45,31">
-       <entry box="0,3,6,2"/>
+      <state_glyph node="32,34,45,31">
+       <entry box="1,2,6,2"/>
       </state_glyph>
      </state>
      <state name="Settings">
-      <tran trig="ABRT" target="../../2">
-       <tran_glyph conn="89,81,3,2,-18,-15">
+      <exit>bsp_display_clear(); </exit>
+      <initial target="../6">
+       <action>bsp_display_clear();
+Clock_Alarm_display_clock_setting_time(me, CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_COL);</action>
+       <initial_glyph conn="95,29,5,2,5,-5">
         <action box="0,-2,10,2"/>
+       </initial_glyph>
+      </initial>
+      <tran trig="ABRT" target="../../2">
+       <action>bsp_display_clear();</action>
+       <tran_glyph conn="89,78,3,2,-18,-13">
+        <action box="-10,-2,10,2"/>
        </tran_glyph>
       </tran>
       <tran trig="OK" target="../../2">
-       <tran_glyph conn="89,88,3,2,-28,-22">
-        <action box="0,-2,10,2"/>
+       <tran_glyph conn="89,85,3,2,-28,-20">
+        <action box="-11,-2,10,2"/>
        </tran_glyph>
       </tran>
-      <state name="Clock_Setting">
-       <entry>bsp_display_clear();
-Clock_Alarm_display_clock_setting_time(me, CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_COL);
-// display_cursor_on_blinkon();</entry>
-       <initial target="../1">
-        <initial_glyph conn="95,39,5,2,6,-3">
+      <state name="Alarm_Setting">
+       <initial target="../2">
+        <action>bsp_display_clear();
+Clock_Alarm_display_clock_setting_time(me, CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_COL);</action>
+        <initial_glyph conn="99,74,5,2,4,-2">
          <action box="0,-2,10,2"/>
         </initial_glyph>
        </initial>
-       <state name="cs_hour_d1">
-        <entry>//display_set_cursor(CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_HOUR_D1_COL);
-bsp_write_rect();
-me-&gt;temp_digit = DIGIT1(GET_HOUR(me-&gt;temp_time));</entry>
+       <tran trig="OK">
+        <action>me-&gt;alarm_status = me-&gt;temp_digit;
+if (me-&gt;temp_format != FORMAT_24H) {
+    me-&gt;temp_time = convert_12hformat_to_24h(me-&gt;temp_time, (time_format_t) me-&gt;temp_format);
+}
+
+me-&gt;alarm_time = me-&gt;temp_time;</action>
+        <choice>
+         <guard>0</guard>
+         <choice_glyph conn="136,93,5,-1,5">
+          <action box="1,0,10,2"/>
+         </choice_glyph>
+        </choice>
+        <tran_glyph conn="130,95,2,-1,-2,6">
+         <action box="0,-2,10,2"/>
+        </tran_glyph>
+       </tran>
+       <state name="as_hour_d1">
+        <entry>me-&gt;temp_digit = DIGIT1(GET_HOUR(me-&gt;temp_time));</entry>
         <tran trig="SET">
          <action>++me-&gt;temp_digit;
 me-&gt;temp_digit %= 3;
 me-&gt;temp_time -= DIGIT1(GET_HOUR(me-&gt;temp_time)) * 10UL * 3600UL;
 me-&gt;temp_time += (me-&gt;temp_digit * 10UL) * 3600UL;
-Clock_Alarm_display_clock_setting_time(me, 0, 2);
-// display_set_cursor(CS_ROW, CLOCK_SETTING_TIME_HOUR_D1);</action>
-         <tran_glyph conn="98,31,3,-1,5">
-          <action box="0,-2,10,2"/>
-         </tran_glyph>
-        </tran>
-        <tran trig="OK" target="../../4">
-         <tran_glyph conn="109,30,1,3,5">
-          <action box="0,-2,10,2"/>
-         </tran_glyph>
-        </tran>
-        <state_glyph node="98,24,11,12">
-         <entry box="0,3,6,2"/>
-        </state_glyph>
-       </state>
-       <state name="cs_min_d1">
-        <entry>//display_set_cursor(CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_MIN_D1_COL);
-me-&gt;temp_digit = DIGIT1(GET_MIN(me-&gt;temp_time));</entry>
-        <tran trig="SET">
-         <action>++me-&gt;temp_digit;
-me-&gt;temp_digit %= 6;
-me-&gt;temp_time -= DIGIT2(GET_HOUR(me-&gt;temp_time)) * 10UL * 60UL;
-me-&gt;temp_time += (me-&gt;temp_digit)  * 10UL * 60UL;
-Clock_Alarm_display_clock_setting_time(me, CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_COL);
-// display_set_cursor(CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_D1_COL);</action>
-         <tran_glyph conn="130,31,3,-1,5">
+Clock_Alarm_display_clock_setting_time(me, 0, 2);</action>
+         <tran_glyph conn="98,67,3,-1,5">
           <action box="0,-2,10,2"/>
          </tran_glyph>
         </tran>
         <tran trig="OK" target="../../3">
-         <tran_glyph conn="141,30,1,3,5">
+         <tran_glyph conn="109,66,1,3,5">
           <action box="0,-2,10,2"/>
          </tran_glyph>
         </tran>
-        <state_glyph node="130,24,11,12">
-         <entry box="0,3,6,2"/>
+        <state_glyph node="98,60,11,12">
+         <entry box="1,2,6,2"/>
         </state_glyph>
        </state>
-       <state name="cs_min_d2">
-        <entry>//display_set_cursor(CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_MIN_D1_COL);
-me-&gt;temp_digit = DIGIT2(GET_MIN(me-&gt;temp_time));</entry>
-        <tran trig="SET">
-         <action>++me-&gt;temp_digit;
-me-&gt;temp_digit %= 10;
-me-&gt;temp_time -= DIGIT2(GET_HOUR(me-&gt;temp_time)) * 10UL * 60UL;
-me-&gt;temp_time += (me-&gt;temp_digit)  * 10UL * 60UL;
-Clock_Alarm_display_clock_setting_time(me, CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_COL);
-// display_set_cursor(CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_D1_COL);</action>
-         <tran_glyph conn="146,31,3,-1,5">
+       <state name="as_hour_d2">
+        <entry>me-&gt;temp_digit = DIGIT2(GET_HOUR(me-&gt;temp_time));</entry>
+        <tran trig="OK" target="../../4">
+         <tran_glyph conn="125,66,1,3,5">
           <action box="0,-2,10,2"/>
          </tran_glyph>
         </tran>
-        <tran trig="OK" target="../../5">
-         <tran_glyph conn="152,36,2,0,2,-48,3">
-          <action box="0,0,10,2"/>
-         </tran_glyph>
-        </tran>
-        <state_glyph node="146,24,11,12">
-         <entry box="0,3,6,2"/>
-        </state_glyph>
-       </state>
-       <state name="cs_hour_d2">
-        <entry>//display_set_cursor(CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_HOUR_D2_COL);
-me-&gt;temp_digit = DIGIT2(GET_HOUR(me-&gt;temp_time));</entry>
         <tran trig="SET">
          <action>++me-&gt;temp_digit;
 me-&gt;temp_digit %= 10;
 me-&gt;temp_time -= DIGIT2(GET_HOUR(me-&gt;temp_time)) * 3600UL;
 me-&gt;temp_time += (me-&gt;temp_digit) * 3600UL;
-Clock_Alarm_display_clock_setting_time(me, 0, 2);
-// display_set_cursor(CS_ROW, CLOCK_SETTING_TIME_HOUR_D2);</action>
-         <tran_glyph conn="114,31,3,-1,5">
+Clock_Alarm_display_clock_setting_time(me, 0, 2);</action>
+         <tran_glyph conn="114,68,3,-1,5">
           <action box="0,-2,10,2"/>
          </tran_glyph>
         </tran>
-        <tran trig="OK" target="../../2">
-         <tran_glyph conn="125,30,1,3,5">
-          <action box="0,-2,10,2"/>
-         </tran_glyph>
-        </tran>
-        <state_glyph node="114,24,11,12">
-         <entry box="0,3,6,2"/>
+        <state_glyph node="114,60,11,12">
+         <entry box="1,2,6,2"/>
         </state_glyph>
        </state>
-       <state name="cs_sec_d1">
+       <state name="as_min_d1">
+        <entry>me-&gt;temp_digit = DIGIT1(GET_MIN(me-&gt;temp_time));</entry>
+        <tran trig="OK" target="../../5">
+         <tran_glyph conn="141,66,1,3,10">
+          <action box="0,-2,10,2"/>
+         </tran_glyph>
+        </tran>
+        <tran trig="SET">
+         <action>++me-&gt;temp_digit;
+me-&gt;temp_digit %= 6;
+me-&gt;temp_time -= DIGIT1(GET_MIN(me-&gt;temp_time)) * 10UL * 60UL;
+me-&gt;temp_time += (me-&gt;temp_digit)  * 10UL * 60UL;
+Clock_Alarm_display_clock_setting_time(me, CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_COL);</action>
+         <tran_glyph conn="130,68,3,-1,5">
+          <action box="0,-2,10,2"/>
+         </tran_glyph>
+        </tran>
+        <state_glyph node="130,60,11,12">
+         <entry box="1,2,6,2"/>
+        </state_glyph>
+       </state>
+       <state name="as_min_d2">
+        <entry>me-&gt;temp_digit = DIGIT2(GET_MIN(me-&gt;temp_time));</entry>
+        <tran trig="OK" target="../../6">
+         <tran_glyph conn="156,72,2,0,3,-53,3">
+          <action box="0,-2,10,2"/>
+         </tran_glyph>
+        </tran>
+        <tran trig="SET">
+         <action>++me-&gt;temp_digit;
+me-&gt;temp_digit %= 10;
+me-&gt;temp_time -= DIGIT2(GET_MIN(me-&gt;temp_time)) * 60UL;
+me-&gt;temp_time += (me-&gt;temp_digit) * 60UL;
+Clock_Alarm_display_clock_setting_time(me, CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_COL);</action>
+         <tran_glyph conn="151,68,3,-1,5">
+          <action box="0,-2,10,2"/>
+         </tran_glyph>
+        </tran>
+        <state_glyph node="151,60,11,12">
+         <entry box="1,2,6,2"/>
+        </state_glyph>
+       </state>
+       <state name="as_sec_d1">
         <entry>me-&gt;temp_digit = DIGIT1(GET_SEC(me-&gt;temp_time));</entry>
+        <tran trig="OK" target="../../7">
+         <tran_glyph conn="109,84,1,3,5">
+          <action box="0,-2,10,2"/>
+         </tran_glyph>
+        </tran>
         <tran trig="SET">
          <action>++me-&gt;temp_digit;
 me-&gt;temp_digit %= 6;
 me-&gt;temp_time -= DIGIT1(GET_SEC(me-&gt;temp_time)) * 10UL;
 me-&gt;temp_time += me-&gt;temp_digit * 10UL;
 Clock_Alarm_display_clock_setting_time(me, CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_COL);</action>
-         <tran_glyph conn="98,48,3,-1,5">
+         <tran_glyph conn="98,86,3,-1,5">
           <action box="0,-2,10,2"/>
          </tran_glyph>
         </tran>
-        <tran trig="OK" target="../../6">
-         <tran_glyph conn="109,47,1,3,5">
-          <action box="0,-2,10,2"/>
-         </tran_glyph>
-        </tran>
-        <state_glyph node="98,41,11,12">
-         <entry box="0,3,6,2"/>
+        <state_glyph node="98,78,11,12">
+         <entry box="1,2,6,2"/>
         </state_glyph>
        </state>
-       <state name="cs_sec_d2">
+       <state name="as_sec_d2">
         <entry>me-&gt;temp_digit = DIGIT2(GET_SEC(me-&gt;temp_time));</entry>
-        <tran trig="OK" target="../../7">
-         <tran_glyph conn="125,47,1,3,5">
+        <tran trig="OK" target="../../8">
+         <tran_glyph conn="125,84,1,3,5">
           <action box="0,-2,10,2"/>
          </tran_glyph>
         </tran>
         <tran trig="SET">
-         <tran_glyph conn="114,48,3,-1,5">
+         <action>++me-&gt;temp_digit;
+me-&gt;temp_digit %= 10;
+me-&gt;temp_time -= DIGIT2(GET_SEC(me-&gt;temp_time));
+me-&gt;temp_time += me-&gt;temp_digit;
+Clock_Alarm_display_clock_setting_time(me, CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_COL);</action>
+         <tran_glyph conn="114,86,3,-1,5">
           <action box="0,-2,10,2"/>
          </tran_glyph>
         </tran>
-        <state_glyph node="114,41,11,12">
-         <entry box="0,3,6,2"/>
+        <state_glyph node="114,78,11,12">
+         <entry box="1,2,6,2"/>
         </state_glyph>
        </state>
-       <state name="cs_format">
+       <state name="as_format">
         <tran trig="SET">
-         <tran_glyph conn="130,48,3,-1,5">
+         <action>if (me-&gt;temp_format == FORMAT_24H) {
+    me-&gt;temp_format = FORMAT_AM;
+} else if(me-&gt;temp_format == FORMAT_AM) {
+    me-&gt;temp_format = FORMAT_PM;
+} else if(me-&gt;temp_format == FORMAT_PM) {
+    me-&gt;temp_format = FORMAT_24H;
+}
+Clock_Alarm_display_clock_setting_time(me, CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_COL);</action>
+         <tran_glyph conn="130,86,3,-1,5">
           <action box="0,-2,10,2"/>
          </tran_glyph>
         </tran>
-        <state_glyph node="130,41,11,12"/>
-       </state>
-       <state name="cs_error">
-        <tran trig="SET">
-         <tran_glyph conn="146,48,3,-1,5">
+        <tran trig="OK">
+         <choice target="../../../9">
+          <guard>is_time_set_error(me-&gt;temp_time, (time_format_t) me-&gt;temp_format)</guard>
+          <choice_glyph conn="146,84,5,3,5">
+           <action box="-4,2,10,2"/>
+          </choice_glyph>
+         </choice>
+         <choice target="../../../10">
+          <guard>else</guard>
+          <choice_glyph conn="146,84,4,2,-7,25,-5">
+           <action box="0,-7,10,2"/>
+          </choice_glyph>
+         </choice>
+         <tran_glyph conn="141,84,1,-1,5">
           <action box="0,-2,10,2"/>
          </tran_glyph>
         </tran>
-        <state_glyph node="146,41,11,12"/>
+        <state_glyph node="130,78,11,12"/>
        </state>
-       <state_glyph node="92,17,71,40">
-        <entry box="0,3,6,2"/>
+       <state name="as_error">
+        <entry>bsp_display_clear();
+bsp_display_write_string(0, 0, &quot;ERROR&quot;);</entry>
+        <tran trig="OK">
+         <tran_glyph conn="162,84,1,-1,-5">
+          <action box="0,-2,10,2"/>
+         </tran_glyph>
+        </tran>
+        <tran trig="SET" target="../..">
+         <tran_glyph conn="157,90,2,2,5">
+          <action box="0,-2,10,2"/>
+         </tran_glyph>
+        </tran>
+        <state_glyph node="151,78,11,12">
+         <entry box="1,2,6,2"/>
+        </state_glyph>
+       </state>
+       <state name="alarm_on_off">
+        <entry>me-&gt;temp_digit = 0U;
+bsp_display_write_string(0, 15, &quot;ALARM OFF&quot;);</entry>
+        <tran trig="SET">
+         <action>if(me-&gt;temp_digit) {
+    bsp_display_write_string(0, 15, &quot;ALARM OFF&quot;);
+    me-&gt;temp_digit = 0;
+} else {
+    bsp_display_write_string(0, 15, &quot;ALARM ON&quot;);
+    me-&gt;temp_digit = 1;
+}</action>
+         <tran_glyph conn="165,68,3,-1,5">
+          <action box="0,-2,10,2"/>
+         </tran_glyph>
+        </tran>
+        <state_glyph node="165,60,11,12">
+         <entry box="1,2,6,2"/>
+        </state_glyph>
+       </state>
+       <state_glyph node="92,56,88,39"/>
+      </state>
+      <state name="cs_hour_d2">
+       <entry>me-&gt;temp_digit = DIGIT2(GET_HOUR(me-&gt;temp_time));</entry>
+       <tran trig="SET">
+        <action>++me-&gt;temp_digit;
+me-&gt;temp_digit %= 10;
+me-&gt;temp_time -= DIGIT2(GET_HOUR(me-&gt;temp_time)) * 3600UL;
+me-&gt;temp_time += (me-&gt;temp_digit) * 3600UL;
+Clock_Alarm_display_clock_setting_time(me, 0, 2);
+// display_set_cursor(CS_ROW, CLOCK_SETTING_TIME_HOUR_D2);</action>
+        <tran_glyph conn="114,19,3,-1,5">
+         <action box="0,-2,10,2"/>
+        </tran_glyph>
+       </tran>
+       <tran trig="OK" target="../../11">
+        <tran_glyph conn="125,18,1,3,3,2,2">
+         <action box="0,-2,10,2"/>
+        </tran_glyph>
+       </tran>
+       <state_glyph node="114,12,11,12">
+        <entry box="1,2,6,2"/>
        </state_glyph>
       </state>
-      <state name="Alarm_Setting">
-       <state_glyph node="107,62,45,31"/>
+      <state name="cs_sec_d2">
+       <entry>me-&gt;temp_digit = DIGIT2(GET_SEC(me-&gt;temp_time));</entry>
+       <tran trig="OK" target="../../9">
+        <tran_glyph conn="125,35,1,3,5">
+         <action box="0,-2,10,2"/>
+        </tran_glyph>
+       </tran>
+       <tran trig="SET">
+        <action>++me-&gt;temp_digit;
+me-&gt;temp_digit %= 10;
+me-&gt;temp_time -= DIGIT2(GET_SEC(me-&gt;temp_time));
+me-&gt;temp_time += me-&gt;temp_digit;
+Clock_Alarm_display_clock_setting_time(me, CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_COL);</action>
+        <tran_glyph conn="114,36,3,-1,5">
+         <action box="0,-2,10,2"/>
+        </tran_glyph>
+       </tran>
+       <state_glyph node="114,29,11,12">
+        <entry box="1,2,6,2"/>
+       </state_glyph>
       </state>
-      <state_glyph node="89,12,77,90"/>
+      <state name="cs_hour_d1">
+       <entry>//display_set_cursor(CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_HOUR_D1_COL);
+bsp_write_rect();
+me-&gt;temp_digit = DIGIT1(GET_HOUR(me-&gt;temp_time));</entry>
+       <tran trig="SET">
+        <action>++me-&gt;temp_digit;
+me-&gt;temp_digit %= 3;
+me-&gt;temp_time -= DIGIT1(GET_HOUR(me-&gt;temp_time)) * 10UL * 3600UL;
+me-&gt;temp_time += (me-&gt;temp_digit * 10UL) * 3600UL;
+Clock_Alarm_display_clock_setting_time(me, 0, 2);
+// display_set_cursor(CS_ROW, CLOCK_SETTING_TIME_HOUR_D1);</action>
+        <tran_glyph conn="97,19,3,-1,5">
+         <action box="0,-2,10,2"/>
+        </tran_glyph>
+       </tran>
+       <tran trig="OK" target="../../4">
+        <tran_glyph conn="108,18,1,3,6">
+         <action box="0,-2,10,2"/>
+        </tran_glyph>
+       </tran>
+       <state_glyph node="97,12,11,12">
+        <entry box="1,2,6,2"/>
+       </state_glyph>
+      </state>
+      <state name="cs_error">
+       <entry>bsp_display_clear();
+bsp_display_write_string(0, 0, &quot;ERROR&quot;);</entry>
+       <tran trig="SET" target="../../../4">
+        <tran_glyph conn="158,41,2,2,8,-4,-2">
+         <action box="0,1,10,2"/>
+        </tran_glyph>
+       </tran>
+       <tran trig="OK">
+        <tran_glyph conn="164,35,1,-1,-5">
+         <action box="0,-2,10,2"/>
+        </tran_glyph>
+       </tran>
+       <state_glyph node="153,29,11,12">
+        <entry box="1,2,6,2"/>
+       </state_glyph>
+      </state>
+      <state name="cs_sec_d1">
+       <entry>me-&gt;temp_digit = DIGIT1(GET_SEC(me-&gt;temp_time));</entry>
+       <tran trig="SET">
+        <action>++me-&gt;temp_digit;
+me-&gt;temp_digit %= 6;
+me-&gt;temp_time -= DIGIT1(GET_SEC(me-&gt;temp_time)) * 10UL;
+me-&gt;temp_time += me-&gt;temp_digit * 10UL;
+Clock_Alarm_display_clock_setting_time(me, CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_COL);</action>
+        <tran_glyph conn="98,36,3,-1,5">
+         <action box="0,-2,10,2"/>
+        </tran_glyph>
+       </tran>
+       <tran trig="OK" target="../../5">
+        <tran_glyph conn="109,35,1,3,5">
+         <action box="0,-2,10,2"/>
+        </tran_glyph>
+       </tran>
+       <state_glyph node="98,29,11,12">
+        <entry box="1,2,6,2"/>
+       </state_glyph>
+      </state>
+      <state name="cs_format">
+       <tran trig="SET">
+        <action>if (me-&gt;temp_format == FORMAT_24H) {
+    me-&gt;temp_format = FORMAT_AM;
+} else if(me-&gt;temp_format == FORMAT_AM) {
+    me-&gt;temp_format = FORMAT_PM;
+} else if(me-&gt;temp_format == FORMAT_PM) {
+    me-&gt;temp_format = FORMAT_24H;
+}
+Clock_Alarm_display_clock_setting_time(me, CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_COL);</action>
+        <tran_glyph conn="130,36,3,-1,5">
+         <action box="0,-2,10,2"/>
+        </tran_glyph>
+       </tran>
+       <tran trig="OK">
+        <action>if (me-&gt;temp_format != FORMAT_24H) {
+    me-&gt;temp_time = convert_12hformat_to_24h(me-&gt;temp_time, (time_format_t)me-&gt;temp_format);
+    me-&gt;time_mode = MODE_12H;
+} else {
+    me-&gt;time_mode = MODE_24H;
+}
+
+me-&gt;temp_time *= 10UL;
+Clock_Alarm_set_curr_time(me-&gt;temp_time);</action>
+        <choice target="../../../7">
+         <guard>is_time_set_error(me-&gt;temp_time, (time_format_t) me-&gt;temp_format)</guard>
+         <choice_glyph conn="147,35,5,3,6">
+          <action box="1,0,10,2"/>
+         </choice_glyph>
+        </choice>
+        <tran_glyph conn="141,35,1,-1,6">
+         <action box="0,-2,10,2"/>
+        </tran_glyph>
+       </tran>
+       <state_glyph node="130,29,11,12"/>
+      </state>
+      <state name="cs_min_d2">
+       <entry>me-&gt;temp_digit = DIGIT2(GET_MIN(me-&gt;temp_time));</entry>
+       <tran trig="SET">
+        <action>++me-&gt;temp_digit;
+me-&gt;temp_digit %= 10;
+me-&gt;temp_time -= DIGIT2(GET_MIN(me-&gt;temp_time)) * 60UL;
+me-&gt;temp_time += (me-&gt;temp_digit) * 60UL;
+Clock_Alarm_display_clock_setting_time(me, CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_COL);
+// display_set_cursor(CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_D1_COL);</action>
+        <tran_glyph conn="153,19,3,-1,5">
+         <action box="0,-2,10,2"/>
+        </tran_glyph>
+       </tran>
+       <tran trig="OK" target="../../8">
+        <tran_glyph conn="159,24,2,0,2,-55,3">
+         <action box="0,0,10,2"/>
+        </tran_glyph>
+       </tran>
+       <state_glyph node="153,12,11,12">
+        <entry box="1,2,6,2"/>
+       </state_glyph>
+      </state>
+      <state name="cs_min_d1">
+       <entry>me-&gt;temp_digit = DIGIT1(GET_MIN(me-&gt;temp_time));</entry>
+       <tran trig="SET">
+        <action>++me-&gt;temp_digit;
+me-&gt;temp_digit %= 6;
+me-&gt;temp_time -= DIGIT1(GET_MIN(me-&gt;temp_time)) * 10UL * 60UL;
+me-&gt;temp_time += (me-&gt;temp_digit)  * 10UL * 60UL;
+Clock_Alarm_display_clock_setting_time(me, CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_COL);
+// display_set_cursor(CLOCK_SETTING_TIME_ROW, CLOCK_SETTING_TIME_D1_COL);</action>
+        <tran_glyph conn="130,21,3,-1,5">
+         <action box="0,-2,10,2"/>
+        </tran_glyph>
+       </tran>
+       <tran trig="OK" target="../../10">
+        <tran_glyph conn="141,20,1,3,10,-2,2">
+         <action box="0,-2,10,2"/>
+        </tran_glyph>
+       </tran>
+       <state_glyph node="130,14,11,12">
+        <entry box="1,2,6,2"/>
+       </state_glyph>
+      </state>
+      <state_glyph node="89,9,93,90">
+       <exit box="0,3,6,2"/>
+      </state_glyph>
      </state>
-     <state_glyph node="21,3,156,104"/>
+     <state name="Clock_Setting">
+      <state_glyph node="92,7,88,40"/>
+     </state>
+     <state_glyph node="21,2,164,104"/>
     </state>
     <state name="Alarm_Notify">
+     <initial target="../3">
+      <initial_glyph conn="33,142,5,2,3,-3">
+       <action box="0,-2,10,2"/>
+      </initial_glyph>
+     </initial>
      <tran trig="OK" target="../../1" cpref="../../1/0">
-      <tran_glyph conn="23,118,3,3,-7,-41,4">
+      <tran_glyph conn="24,125,3,3,-7,-49,3">
        <action box="0,-2,10,2"/>
       </tran_glyph>
      </tran>
-     <state_glyph node="23,111,33,20"/>
+     <tran trig="TICK">
+      <action>Clock_Alarm_display_curr_time(me, TICKING_CURR_TIME_ROW, TICKING_CURR_TIME_COL);</action>
+      <choice>
+       <guard>++me-&gt;alarm_timeout &gt;= 200U</guard>
+       <action>me-&gt;alarm_timeout = 0U;</action>
+       <choice_glyph conn="13,137,5,-1,-10">
+        <action box="1,0,10,2"/>
+       </choice_glyph>
+      </choice>
+      <tran_glyph conn="24,137,3,-1,-11">
+       <action box="0,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <state name="alarm_msg_on">
+      <entry>bsp_display_write_string(15, 15, &quot;**ALARM**&quot;);</entry>
+      <tran trig="TICK">
+       <action>me-&gt;timeout++;</action>
+       <choice target="../../../4">
+        <guard>me-&gt;timeout == 10</guard>
+        <action>me-&gt;timeout = 0;</action>
+        <choice_glyph conn="50,134,5,3,8">
+         <action box="1,0,10,2"/>
+        </choice_glyph>
+       </choice>
+       <tran_glyph conn="44,134,1,-1,6">
+        <action box="0,-3,10,2"/>
+       </tran_glyph>
+      </tran>
+      <state_glyph node="29,128,15,11">
+       <entry box="1,2,6,2"/>
+      </state_glyph>
+     </state>
+     <state name="alarm_msg_off">
+      <entry>bsp_display_clear();</entry>
+      <tran trig="TICK">
+       <choice target="../../../3">
+        <guard>0</guard>
+        <choice_glyph conn="55,124,5,0,-18,4">
+         <action box="1,0,10,2"/>
+        </choice_glyph>
+       </choice>
+       <tran_glyph conn="66,128,0,-1,-4,-11">
+        <action box="0,-2,10,2"/>
+       </tran_glyph>
+      </tran>
+      <state_glyph node="58,128,15,11">
+       <entry box="1,2,6,2"/>
+      </state_glyph>
+     </state>
+     <state_glyph node="24,118,53,30"/>
     </state>
     <state_diagram size="259,160"/>
    </statechart>
@@ -329,7 +671,9 @@ Clock_Alarm_display_clock_setting_time(me, CLOCK_SETTING_TIME_ROW, CLOCK_SETTING
 
 // PROTOTYPES FOR HELPER FUNCTIONS
 const char* get_am_or_pm(uint32_t time24h);
+uint32_t convert_12hformat_to_24h(uint32_t time12h, time_format_t ampm);
 uint32_t convert_24hformat_to_12h(uint32_t time24h);
+bool is_time_set_error(uint32_t time_, time_format_t format);
 
 $declare${HSMs::Clock_Alarm}
 $define${HSMs::super_ClockAlarm}
@@ -399,6 +743,11 @@ uint32_t convert_24hformat_to_12h(uint32_t time24h) {
             time12h = time24h - (12UL * 3600UL);
     }
     return time12h;
+}
+
+bool is_time_set_error(uint32_t time_, time_format_t format) {
+    uint8_t h = GET_HOUR(time_);
+    return ( (h &gt; 23) || ( (h &gt; 12) || (h == 0)) &amp;&amp; format != FORMAT_24H);
 }</text>
    </file>
    <file name="ClockAlarm_SM.h">
@@ -437,7 +786,7 @@ typedef enum time_format {
 #define DIGIT2(d)             (d % 10U)
 
 #define MAX_TIME (864000UL) // 24 * 3600 * 10 
-#define INITIAL_CURR_TIME  (((4UL * 3600UL) + (0UL * 60UL) + 0UL) * 10UL)
+#define INITIAL_CURR_TIME  (((6UL * 3600UL) + (2UL * 60UL) + 0UL) * 10UL)
 #define INITIAL_ALARM_TIME (8UL * 3600UL)
 
 #define TICKING_CURR_TIME_ROW 0
@@ -470,5 +819,6 @@ $declare${HSMs::super_ClockAlarm}
   <attribute name="super_ClockAlarm" type="QHsm *const" visibility="0x00" properties="0x00">
    <code>= &amp;Clock_Alarm_obj.super;</code>
   </attribute>
+  <attribute name="alarm_timeout" type="uint32_t" visibility="0x00" properties="0x00"/>
  </package>
 </model>

@@ -55,7 +55,7 @@ static void btn_init(void) {
     btn_pins.Pin = BTN_SET_PIN;
     HAL_GPIO_Init(BTN_SET_PORT, &btn_pins);
 
-    // btn_pins.Pin = BTN_OK_PIN;
+    btn_pins.Pin = BTN_OK_PIN;
     HAL_GPIO_Init(BTN_OK_PORT, &btn_pins);
 }
 

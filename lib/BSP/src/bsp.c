@@ -16,7 +16,6 @@
 uint8_t hw_init(void) {
     HAL_Init();
     clock_config();
-    // tim16_init();
     gpio_init();
     uart_init();
 
